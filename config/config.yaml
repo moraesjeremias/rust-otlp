@@ -1,0 +1,55 @@
+# Otel collector config
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  prometheus:
+    config:
+      scrape_configs:
+      - job_name: 'otel'
+        scrape_interval: 10s
+        static_configs:
+        - targets: ['0.0.0.0:8888']
+
+processors:
+  batch:
+    send_batch_max_size: 1000
+    send_batch_size: 500 # number of metrics received before send
+    timeout: 120s #if 0 ignores batch_size and sends immediately
+
+extensions:
+  health_check:
+
+exporters:
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    const_labels:
+      basedn: "local"
+    metric_expiration: 5m
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  logging:
+    verbosity: basic
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+service:
+  extensions: [health_check]
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: []
+      exporters: [logging]
+    traces:
+      receivers: [otlp]
+      processors: []
+      exporters: [logging]
+    metrics:
+      receivers: [otlp]
+      processors: []
+      exporters: [logging]

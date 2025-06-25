@@ -1,0 +1,14 @@
+[package]
+name = "rust-otlp"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0"
+opentelemetry = "0.27.1"
+opentelemetry-appender-tracing = { version = "0.27.0", features = ["log"] }
+opentelemetry-otlp = { version = "0.27.0", features = ["grpc-tonic", "metrics", "logs"] }
+opentelemetry_sdk = { version = "0.27.1", features = ["metrics", "rt-tokio", "logs"] }
+tokio = { version = "1.35", features = ["sync", "macros", "io-util", "rt", "time", "rt-multi-thread"] }
+tracing = "0.1.35"
+tracing-subscriber = { version = "0.3.17", features = ["json", "env-filter"] }
