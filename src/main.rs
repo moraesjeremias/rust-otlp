@@ -3,9 +3,12 @@ use std::{str::FromStr, thread::sleep, time::Duration};
 use anyhow::Result;
 use opentelemetry_appender_tracing::layer::{self, OpenTelemetryTracingBridge};
 use opentelemetry_otlp::{LogExporter, Protocol, WithExportConfig};
-use opentelemetry_sdk::{logs::{Logger, LoggerProvider}, runtime::Tokio};
-use tracing::{info, level_filters::LevelFilter};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use opentelemetry_sdk::{
+    logs::{Logger, LoggerProvider},
+    runtime::Tokio,
+};
+use tracing::{error, info, level_filters::LevelFilter};
+use tracing_subscriber::{EnvFilter, Layer, prelude::*};
 
 #[tokio::main]
 async fn main() {
@@ -13,8 +16,8 @@ async fn main() {
     let _ = initialize_logger(otlp_layer, true);
 
     loop {
-        info!(target: "stdout_only", message = "Hello, world!");
-        info!(target: "otlp_only", message = "Hello, world!");
+        info!(target: "stdout", message = "Hello, world!");
+        error!(target: "otlp", message = "Hello, world! OTLP");
         sleep(Duration::from_secs(5));
     }
 }
@@ -23,7 +26,8 @@ fn initialize_logger(
     otlp_layer: OpenTelemetryTracingBridge<LoggerProvider, Logger>,
     enable_otlp: bool,
 ) -> Result<()> {
-    let registry = tracing_subscriber::registry().with(
+    let registry = tracing_subscriber::registry()
+        .with(
             tracing_subscriber::fmt::layer()
                 .json()
                 .with_current_span(true)
@@ -32,7 +36,14 @@ fn initialize_logger(
         .with(LevelFilter::from_str("info")?);
 
     if enable_otlp {
-        registry.with(otlp_layer).init();
+        let filter_otel = EnvFilter::new("error")
+            .add_directive("stdout=off".parse().unwrap())
+            .add_directive("hyper=off".parse().unwrap())
+            .add_directive("opentelemetry=off".parse().unwrap())
+            .add_directive("tonic=off".parse().unwrap())
+            .add_directive("h2=off".parse().unwrap())
+            .add_directive("reqwest=off".parse().unwrap());
+        registry.with(otlp_layer.with_filter(filter_otel)).init();
     } else {
         registry.init();
     }
